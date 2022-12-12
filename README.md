@@ -7,9 +7,11 @@ Description: This package contains the calculation of top 3 terms in a given lis
 Exported Functions:
 
 top3_high(arr)
+
 top3_low(arr)
 
 Examples:
 
 top3_high(1:5)
+
 top3_low(c(1,3,5,7,9))
