@@ -1,0 +1,150 @@
+---
+title: "Example analysis"
+author: "Jiaqi Cheng"
+date: "2022-12-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this example analysis, we explore the universities in different states in US, and then analysis the annual tuition fees and total expense of university students.
+
+The original data used here come from [the Chronicle of Higher Education](https://www.chronicle.com/article/tuition-and-fees-1998-99-through-2018-19/). It contains published tuition and required fees at more than 3,400 colleges and universities for the 2020-21 academic year. The data dictionary can be found at [College tuition, diversity, and pay](https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-03-10), and we use tuition_cost.csv here.
+
+First, we import packages needed.
+
+```{r, message=FALSE}
+library(top3)
+library(here)
+library(readr)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(stringr)
+library(forcats)
+library(purrr)
+```
+
+## Data Preparation
+
+Test if a directory named data exists locally and save the data set.
+
+```{r}
+# tests if a directory named "data" exists locally
+if(!dir.exists(here("data"))) { dir.create(here("data")) }
+
+if(!file.exists(here("data","tuition_cost"))){
+  tuition_cost <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-10/tuition_cost.csv")
+  
+  # save the files to RDS objects
+  save(tuition_cost, file = here("data","tuition_cost"))
+}
+```
+
+Here we clean the data, and select needed attributes.
+
+```{r}
+data <- select(tuition_cost, name, state, type, degree_length, room_and_board, 
+                       out_of_state_tuition, out_of_state_total)
+data <- filter(data, !is.na(state))
+data <- arrange(data, desc(out_of_state_total))
+data <- rename(data, tuition = out_of_state_tuition, total_expense = out_of_state_total)
+
+head(data)
+```
+
+## Data Analysis
+
+We have a look at the top three states with the most and the fewest universities.
+
+```{r}
+num_of_uni_summary <- data %>%
+  group_by(state) %>%
+  summarise(
+    n = n()
+  )
+maxi <- top3_high(num_of_uni_summary$n)
+maxi_states <- num_of_uni_summary[which(num_of_uni_summary$n %in% maxi),]
+maxi_states
+
+mini <- top3_low(num_of_uni_summary$n)
+mini_states <- num_of_uni_summary[which(num_of_uni_summary$n %in% mini),]
+mini_states
+```
+
+California, New York and Pennsylvania have the most number of universities, whereas Alaska, Delaware and Wyoming have the least number of universities.
+
+To find the average cost of university students, we calculate the mean value of tuition fees and total expense.
+
+```{r}
+map(.x = data[,c("tuition","total_expense")], .f = mean)
+
+# Create a data set for school type level
+uni_type <- data |> split(data$type)
+uni_type |> map_dbl(.f = ~mean(.x$tuition)) # returns a vector of doubles
+uni_type |> map_dbl(.f = ~mean(.x$total_expense))
+```
+
+The average tuition fees is \$20,711.52 per year, and the average total expense is \$27,147.51 per year. The expense in private universities is the highest, whereas the expense in public universities is the lowest.
+
+We draw a histogram of annual total expense of all the university students.
+
+```{r, warning=FALSE}
+ggplot(data, aes(x = total_expense)) + 
+  geom_density() + 
+  geom_vline(aes(xintercept=mean(total_expense)),
+              color="blue", linetype="dashed", size=1) +
+  xlab("annual total expense")+ylab("density")+
+  labs(title = "Distribution of Annual Total Expense of University Students",
+              subtitle = "Adding the Line Representing the Average Annual Total Expense",
+              caption = "Jiaqi Cheng") +
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+```
+
+We can conclude from this histogram that the distribution of annual total expense is right skewed. Most of students spend no more than \$30,000 per year.
+
+Then we group the students by the state in which they study, and have a look at their annual total expense as well as tuition fees.
+
+```{r}
+expense_summary <- data %>%
+  group_by(state) %>%
+  summarise(
+    tuition = mean(tuition, na.rm = TRUE),
+    total_expense = mean(total_expense, na.rm = TRUE),
+    n = n()
+  )
+
+ggplot(expense_summary, aes(total_expense, fct_reorder(state, total_expense))) + 
+  geom_point(aes(size = tuition)) + 
+  xlab("total expense")+ylab("state")+
+  labs(title = "Average Total Expense of Universities in Different States",
+              subtitle = "Also Show the Average Tuition Fees of Universities",
+              caption = "Jiaqi Cheng") +
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5), axis.text = element_text(size = 6))
+```
+
+We see that the annual expense at Rhode Island, Vermont and Massachusetts is the highest, while the annual expense at New Mexico, Wyoming and Arkansas is the lowest. Generally speaking, the higher the tuition fees, the much the students should spend in total.
+
+## Conclusion
+
+The universities in US are very unevenly distributed. California has more than 250 universities, whereas there are only 6 universities located in Alaska. Students' costs in Universities varies a lot. In general, private universities require more fees, and universities in Rhode Island cost the most. 
+
+## Functions Summary
+
+Functions used from the packages:
+
+- dplyr: select(), filter(), arrange(), rename(), group_by(), summarise()
+
+- forcats: fct_reorder()
+
+- purrr: map(), map_dbl()
+
+- ggplot2: geom_density(), geom_vline(), geom_point()
+
+- top3: top3_high(), top3_low()

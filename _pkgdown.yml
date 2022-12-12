@@ -1,0 +1,21 @@
+url: ~
+template:
+  bootstrap: 5
+  bootswatch: minty
+  bslib:
+    pkgdown-nav-height: 100px
+    base_font: {google: "Calibri"}
+    heading_font: {google: "Roboto Slab"}
+    code_font: {google: "JetBrains Mono"}
+  theme: ayu-light
+navbar:
+  structure:
+    left:  [intro, reference, articles]
+    right: [github]
+home:
+  sidebar:
+    structure: [links, license, community, citation, authors, dev]
+footer:
+  structure:
+    left: developed_by
+    right: built_with
